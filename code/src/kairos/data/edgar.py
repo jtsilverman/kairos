@@ -28,6 +28,8 @@ def _ua() -> dict[str, str]:
     """
     from kairos import config  # noqa: PLC0415
     return {"User-Agent": config.CONTACT}
+
+
 _TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 _FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json"
 

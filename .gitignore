@@ -1,11 +1,33 @@
-__pycache__/
-*.py[cod]
-.env
+# Data (trade ledger, live DB, snapshots). Never committed. Keep dir via .gitkeep.
+data/*
+!data/.gitkeep
+
+# Code-local data (Polygon cache, backtest outputs). Never committed.
+code/data/
+
+# SQLite + companion files.
 *.db
 *.db-wal
 *.db-shm
-/data/
-code/data/
+*.db.snap
+*.sqlite
+
+# Logs and large exports.
+*.log
+*.parquet
+
+# Python caches, build artifacts, virtualenvs.
 .venv/
+__pycache__/
 .pytest_cache/
 *.egg-info/
+build/
+dist/
+
+# Env files (broker creds, API keys).
+.env
+.env.bak-*
+
+# Spec/build runtime transients.
+specs/.cockpit-sidecar.json
+specs/*/sessions/

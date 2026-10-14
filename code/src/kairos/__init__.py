@@ -1,6 +1,6 @@
-"""kairos: a multi-agent equity research pipeline.
+"""kairos: a fundamental stock picker built as a multi-agent research funnel.
 
 Screens the US equity universe down to a candidate set, then runs each candidate
-through a multi-stage agent workflow that builds, cross-checks and stress-tests
-an evidence-cited investment thesis.
+through triage and a five-seat agent funnel that argues, rules on, fact-checks and
+rates an evidence-cited investment thesis. Shares, long only.
 """

@@ -1,7 +1,7 @@
 [project]
 name = "kairos"
 version = "0.1.0"
-description = "Multi-agent equity research pipeline: screen the US universe, then build and stress-test an evidence-cited thesis per candidate."
+description = "Fundamental stock picker: screen the US universe, then build, check and rate an evidence-cited thesis per candidate through a multi-agent funnel."
 requires-python = ">=3.12"
 dependencies = [
     "polygon-api-client>=1.16.3",

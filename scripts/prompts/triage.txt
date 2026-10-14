@@ -1,0 +1,14 @@
+Run kairos layer-1 triage for one cohort. Do exactly this and nothing else.
+
+1. Call the Workflow tool with scriptPath set to the absolute path
+   SCRIPTFILE
+   and NO args. The triage packet is spliced into that script; do not read,
+   retype or pass it.
+2. When it returns, save the workflow's COMPLETE return value as JSON to
+   OUTFILE
+   with a Python json.dump from the task output file, never a retyped Write.
+3. Re-read that file and report: the run id, `rule`, the `counts` object, and
+   the number of keeps.
+
+Do not edit any prompt, script, or spec. Do not launch any other workflow.
+Do not score anything.

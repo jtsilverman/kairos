@@ -331,6 +331,11 @@ def fetch_grouped_daily(
             for r in raw
             if getattr(r, "ticker", None)
         ]
+        # An empty response is final only for a date already past (a weekend or
+        # a holiday). For today or later it means "not traded yet", and caching
+        # it pinned every future session to no bars after the date arrived.
+        if not bars and date >= datetime.now(timezone.utc).date().isoformat():
+            return bars
         _cache_put(
             conn, "fetch_grouped_daily", args_json, json.dumps([asdict(b) for b in bars])
         )

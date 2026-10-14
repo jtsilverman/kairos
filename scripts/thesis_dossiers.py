@@ -339,8 +339,19 @@ def main() -> int:
                          "cohort": screen.get("cohort", "rs90")})
         print(f"{t}: {len(d.doc_ids)} docs, {len(d.text)} chars, sha {d.sha256[:12]}")
 
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
-    print(f"\nmanifest: {out_dir / 'manifest.json'} ({len(manifest)} dossiers)")
+    # MERGE, never overwrite. A --tickers run compiles a subset, and an
+    # overwriting write drops every name the run did not touch: a 163-dossier
+    # directory once fell to a 3-entry manifest on a 10-name retry, and
+    # panel_prepare reads doc ids from the manifest, so the other 160 names
+    # silently vanish from the funnel rather than failing loud.
+    manifest_path = out_dir / "manifest.json"
+    merged: dict[str, dict] = {}
+    if manifest_path.exists():
+        merged = {r["ticker"]: r for r in json.loads(manifest_path.read_text())}
+    merged.update({r["ticker"]: r for r in manifest})
+    rows = [merged[t] for t in sorted(merged)]
+    manifest_path.write_text(json.dumps(rows, indent=1))
+    print(f"\nmanifest: {manifest_path} ({len(manifest)} written, {len(rows)} total)")
     if failed:
         print(f"FAILED (rerun these, do not skip silently): {failed}")
         return 1

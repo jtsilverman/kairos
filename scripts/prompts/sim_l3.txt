@@ -1,0 +1,13 @@
+Run one kairos layer-3 (editor + verdict) batch. Do exactly this and nothing else.
+
+1. Read the JSON file at ARGSFILE.
+2. Call the Workflow tool with scriptPath set to the absolute path
+   ROOTDIR/data/scratch/funnel-sim.js
+   and args set to that file's parsed JSON contents (a real object, not a string).
+3. When it returns, save the workflow's COMPLETE return value as JSON to OUTFILE
+   with a Python json.dump from the task output file, never a retyped Write.
+4. Re-read OUTFILE and report: the run id, the number of records, and the dropped
+   list (must be empty).
+
+Do not edit any prompt, seat body, or spec. Do not launch any other workflow.
+Do not score anything. Do not touch June.
