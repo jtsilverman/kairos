@@ -30,12 +30,6 @@ class FinraError(Exception):
     """Error payload or unrecognized row shape from the FINRA API."""
 
 
-def _contact() -> str:
-    """FINRA 500s on the default Python-urllib User-Agent (live 2026-07-10)."""
-    from kairos import config  # noqa: PLC0415
-    return config.CONTACT
-
-
 def short_interest_rows(payload) -> list[dict]:
     """API payload -> ascending-settlement rows {settlement_date,
     short_shares, days_to_cover, change_pct}."""
@@ -71,9 +65,10 @@ def fetch_short_interest(ticker: str, *, settlements: int = 6,
         "limit": 50,
     }).encode()
     # FINRA 500s on the default Python-urllib User-Agent (live 2026-07-10)
+    from kairos import config  # noqa: PLC0415  (lazy: config imports kairos.data)
     req = urllib.request.Request(_URL, data=body, headers={
         "Content-Type": "application/json", "Accept": "application/json",
-        "User-Agent": _contact()})
+        "User-Agent": config.CONTACT})
     with urllib.request.urlopen(req, timeout=30) as resp:
         payload = json.load(resp)
     return short_interest_rows(payload)[-settlements:]

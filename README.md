@@ -1,129 +1,90 @@
 # kairos
 
-A multi-agent equity research pipeline. It screens the US equity universe down to a working
-candidate set, then runs each candidate through a panel of agents that build, cross-check and
-stress-test an evidence-cited investment thesis.
+A fundamental stock picker built as a multi-agent research funnel. Each month it reads the public
+record of every US company that survives a rule-out screen, argues the bull and bear case for each,
+fact-checks both, and writes a rated thesis for the names it would own. Shares, long only.
 
-**Status: in beta.** The screen and the thesis engine both run end to end. The full test suite
-passes. Research use only, and nothing here places a trade.
+**Status: forward paper test.** Nothing here places a trade. The first live run (as of 2026-10-06)
+is recorded as an equal-weight paper basket, scored against SPY at 6, 12 and 24 weeks. Execution
+and position management are a separate private part of the project and are not in this repository.
 
-This repository is the research half of a larger private project. Execution, position management,
-and the trade journal are not included.
+## The goal
+
+A monthly shortlist where each name carries a clear, strong fundamental thesis: a sound business
+case, good fundamentals, a demand case where one applies, and a company clearly positioned for it.
+The prompts are calibrated to the soundness of the thesis. Beating SPY over a quarter to a year is
+the check on the method, never the target the prompts are fitted to.
 
 ## The funnel
 
-Results of record, 2026-08-17. Reproduce with the commands in `docs/stage2-triage-2026-08.md`.
+| Stage | What it does | Model | 2026-10-06 |
+|---|---|---|---|
+| Rule-out screen | Hard binary rules: facts no fundamental thesis survives | none | 801 → 299 |
+| Layer 1: triage | Reads an anonymized fact sheet; a name is cut only when two passes both say no | `claude-sonnet-5` | 299 → 205 |
+| Dossier | Filings, transcripts, estimates, revisions, insider and short-interest data, every source dated on or before the as-of date | none | 205 |
+| Layer 2: bull, bear, ruler | A bull and a bear argue four tests; the ruler reads the dossier and rules whether the bull case outweighs the bear | `claude-sonnet-5` | 205 → 134 |
+| Layer 3: editor, verdict | The editor checks every claim in both cases against the dossier; the verdict seat writes the thesis and rates it | `claude-opus-4-8`, `claude-fable-5` | 134 → 55 |
 
-| Stage | Names | What it does |
-|---|---|---|
-| US universe | 9,563 | Every listed common share with a filed record |
-| Price strength | 768 | Top third of the ranked field |
-| Rule-out screen, 8 rules | 342 | Facts no fundamental thesis survives |
-| Event rule-outs | 336 | `kairos.events` |
-| Agent triage | 207 | Three blind agent seats read an anonymized fact sheet |
-| Thesis panel | 5-10 live theses | Deep read, adversarial review, conviction ranking |
+The four tests every case is argued on: business case, fundamentals, demand case, positioning
+(`docs/four-tests.md`). Every seat names a versioned model id, never a bare alias, so a model
+release cannot silently change the funnel.
 
-## The screen rules out, it never ranks
+A blind sorter grades every layer-2 entrant's dossier on the same four tests, without seeing any
+seat's output. Those grades are the reference the funnel is judged against: of the strong
+dossiers, how many survived; of the weak ones, how many were stopped.
 
-Every gate is a hard binary. A name either carries a fact that kills any fundamental thesis or it
-does not. The screen is judged on what it rules out, never on the returns of its survivors.
+## What the past dates showed
 
-The eight rules, in `docs/ruleout-screen-2026-08.md`: has revenue, revenue growing year over year,
-funds itself on operating cash flow, share count not up more than 20% in a year, not deteriorating,
-and a sector deny-list for businesses whose results are set by a price nobody at the company
-controls.
+Tuned on three past dates (2026-02-02, 03-16, 05-01) with models whose training cutoff precedes
+them, then read once on a held-out date (2026-06-01):
 
-The deterioration test splits by business type, because the metrics do. Non-financial companies are
-cut only when earnings fell more than 25% and neither capex nor research spend rose, since a modest
-dip is ordinary noise and a collapse with no investment behind it is not. Financial companies are
-required to grow both earnings and book value per share, because banks, insurers and REITs report
-no capex and no research line, so the non-financial test would cut them by accident. Twelve of the
-first twenty-one cuts under the old test were financials with no path available to them.
+- The funnel sorted dossiers as intended: no weak-tier dossier reached the June shortlist.
+- The sort lost money that quarter. The 39-name shortlist trailed SPY by 9.9 points over
+  2026-06-02 to 2026-08-31, while the weak-tier dossiers beat it. A July selloff in AI and
+  infrastructure names, plus company-specific misses, hit exactly the strong-dossier names.
+  `docs/june-return-audit.md` has the numbers, including two split-adjustment errors in the price
+  cache that had overstated the loss.
 
-## The agent triage is blind on purpose
+One quarter cannot separate a wrong rubric from a hostile tape, which is why the method moved to a
+forward paper test rather than more tuning on the same past dates.
 
-Stage 2 asks whether a name that cleared the mechanical screen still carries a fundamental case.
+## Running it
 
-1. Each name gets a fact sheet: filed annual series, margins, revenue CAGR, dilution, net debt over
-   operating cash flow, interest coverage, and a stale-series block. `kairos.factsheet`.
-2. The sheet is **anonymized**. No ticker, no market cap, no price, no price strength.
-   `kairos.thesis.anonymize`.
-3. Three independent agent seats read it and answer yes or no.
-   `.claude/agents/screen-triage.md`.
-4. A name all three agree on is settled. A split goes to an adjudicator.
-   `.claude/agents/screen-adjudicator.md`.
-
-Anonymization is what makes the vote worth counting. An agent that can see the ticker is reasoning
-about the company it already knows, not about the filed record in front of it.
-
-## The thesis panel
-
-Each surviving candidate is read by a panel of role-specialized agents, defined in `.claude/agents/`:
-
-| Agent | Role |
-|---|---|
-| `thesis-analyst` | Builds the case from the public record |
-| `thesis-fundamentals` | Checks the numbers behind the case |
-| `thesis-catalyst` | Names what has to happen and by when |
-| `thesis-challenger` | Argues the other side |
-| `thesis-adversary` | Attacks the thesis's weakest load-bearing claim |
-| `thesis-judge` | Scores conviction against the evidence actually cited |
-
-The ensemble logic is in `kairos.thesis.ensemble`; the memo format and its citation rules are in
-`kairos.thesis.memo`; open theses and their review triggers live in `kairos.thesis.ledger`.
-
-Every claim in a memo carries a citation to the filing, transcript, or data series it came from. A
-claim with no source does not enter the memo.
-
-## Data sources
-
-| Module | Source |
-|---|---|
-| `kairos.data.edgar` | SEC EDGAR company facts and filings |
-| `kairos.data.transcripts` | Earnings call transcripts |
-| `kairos.data.estimates` | Analyst estimate revisions |
-| `kairos.data.finra` | Short interest |
-| `kairos.data.fred` | Macro series for the regime read |
-| `kairos.data.polygon` | Price and volume bars |
-| `kairos.data.universe` | The listed universe |
-
-## Run it
+Requirements: Python 3.12, a Polygon key with stock aggregates, and Claude Code with the Workflow
+tool (the agent stages run as Claude Code workflows driven by headless `claude -p` children).
 
 ```
-cd code
-python -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 330 tests
+cd code && python -m venv .venv && .venv/bin/pip install -e . pytest
+cp .env.example .env   # POLYGON_API_KEY, KAIROS_CONTACT
+cd code && .venv/bin/pytest -q
 ```
 
-Set `KAIROS_CONTACT` before any live fetch. SEC EDGAR and FINRA both reject an anonymous
-User-Agent and ask for a contact address in it:
+Generate the workflow scripts from the committed seat bodies, then run a live date:
 
 ```
-export KAIROS_CONTACT="your-project you@example.com"
+code/.venv/bin/python scripts/gen_funnel_workflow.py --out data/scratch/funnel-sim.js
+code/.venv/bin/python scripts/gen_sorter_workflow.py --out data/scratch/sim-sorter.js
+bash scripts/live_paper_run.sh <last completed trading day>
 ```
 
-`POLYGON_API_KEY` is read from the environment at call time for price data.
+The chain runs one Claude child at a time in batches of eight names, skips any batch whose output
+exists, and stops on the first failure, so rerunning it unchanged resumes. `scripts/mem_guard.sh`
+pauses it under memory pressure. The paper basket is written once to `data/paper/<as_of>.json`;
+`scripts/score_paper.py score` fills each window once its exit close exists.
 
 ## Layout
 
-```
-code/src/kairos/
-  screen.py       The mechanical screen
-  ruleout.py      The eight rule-out gates
-  events.py       Event rule-outs
-  factsheet.py    The anonymizable fact sheet
-  data/           SEC, transcripts, estimates, FINRA, FRED, Polygon, universe
-  signals/        Relative strength, opening range, story age
-  thesis/         Dossiers, ensemble, memo, ledger, regime, market context
-code/tests/       330 tests
-scripts/          Runnable entry points for each stage
-.claude/agents/   The screening and thesis agent definitions
-docs/             The screen of record, the thesis framework, validation methodology
-```
+| Path | What |
+|---|---|
+| `.claude/agents/` | Seat bodies: triage, bull, bear, ruler, editor, verdict, sorter |
+| `scripts/gen_*_workflow.py`, `scripts/cascade_workflow.js` | Workflow generators; seat bodies are embedded by value |
+| `scripts/live_paper_run.sh`, `scripts/prompts/` | The live chain and its child prompts |
+| `scripts/score_paper.py` | The paper basket and its 6/12/24-week scorer |
+| `code/src/kairos/` | Screen, fact sheets, dossier compiler, data clients |
+| `docs/` | The four tests, the screen rules, triage method, validation method, the June audit |
 
-## Known limits
+## Data sources
 
-The screen's survivor count runs well above the panel's capacity: 207 names against a panel ceiling
-of 100. That is a count problem rather than a precision problem, and it has no screening solution.
-Tightening the rule-out gates to hit a target count would convert a rule-out screen into a ranking
-screen, which is the design the docs argue against.
+SEC EDGAR (filings, XBRL facts, Form 4), Polygon (prices), FINRA (short interest), FRED (macro),
+earnings transcripts and analyst estimates. EDGAR and FINRA require a contact string in the
+User-Agent: set `KAIROS_CONTACT` in `.env`.
